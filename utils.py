@@ -3,9 +3,11 @@ import time
 import requests
 import matplotlib.pyplot as plt
 import pandas as pd
-import ta
+from ta.trend     import SMAIndicator, EMAIndicator, MACD
+from ta.momentum  import RSIIndicator
 import mplfinance as mpf
 from dotenv import load_dotenv
+import talib
 
 # Load environment variables
 load_dotenv()
@@ -13,7 +15,7 @@ HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
 MODEL_URL = os.getenv('MODEL_URL')
 
 # Function to fetch historical price data from Binance API
-def fetch_historical_data(symbol='BTCUSDT', interval='1m', limit=60):
+def fetch_historical_data(symbol='SOLUSDT', interval='1m', limit=60):
     url = f'https://api.binance.com/api/v3/klines'
     params = {
         'symbol': symbol,
@@ -43,21 +45,21 @@ def fetch_historical_data(symbol='BTCUSDT', interval='1m', limit=60):
 # Function to calculate technical indicators
 def calculate_indicators(df):
     # Calculate Moving Averages
-    df['SMA_20'] = ta.trend.sma_indicator(df['close'], window=20)
-    df['EMA_50'] = ta.trend.ema_indicator(df['close'], window=50)
+    df["SMA_20"] = SMAIndicator(df["close"], window=20).sma_indicator()
+    df["EMA_50"] = EMAIndicator(df["close"], window=50).ema_indicator()
     
     # Calculate RSI
-    df['RSI'] = ta.momentum.rsi(df['close'], window=14)
+    df["RSI"] = RSIIndicator(df["close"], window=14).rsi()
     
     # Calculate MACD
-    macd = ta.trend.macd(df['close'], window_slow=26, window_fast=12, window_sign=9)
-    df['MACD'] = macd['MACD']
-    df['MACD_Signal'] = macd['MACD_SIGNAL']
-    df['MACD_Hist'] = macd['MACD_DIFF']
-    
-    # Calculate Candlestick Patterns
-    df['Hammer'] = ta.trend.hammer(df['open'], df['high'], df['low'], df['close'])
-    df['Engulfing'] = ta.trend.engulfing(df['open'], df['high'], df['low'], df['close'])
+    macd = MACD(df["close"], window_slow=26, window_fast=12, window_sign=9)
+    df["MACD"]        = macd.macd()
+    df["MACD_Signal"] = macd.macd_signal()
+    df["MACD_Hist"]   = macd.macd_diff()
+
+    # --- candlestick patterns (TA-Lib returns 0 or ±100) ---
+    df["Hammer"]    = talib.CDLHAMMER(df["open"], df["high"], df["low"], df["close"])
+    df["Engulfing"] = talib.CDLENGULFING(df["open"], df["high"], df["low"], df["close"])
     
     return df
 
@@ -71,8 +73,8 @@ def plot_chart(df):
         mpf.make_addplot(df['MACD_Signal'], panel=1, color='orange', ylabel='MACD Signal'),
         mpf.make_addplot(df['MACD_Hist'], type='bar', panel=1, color='dimgray', ylabel='MACD Hist'),
         mpf.make_addplot(df['RSI'], panel=2, type='line', ylabel='RSI', ylim=(0, 100)),
-        mpf.make_addplot([30] * len(df), panel=2, type='line', color='green', linestyle='--', linewidth=1),
-        mpf.make_addplot([70] * len(df), panel=2, type='line', color='red', linestyle='--', linewidth=1)
+        mpf.make_addplot([30] * len(df), panel=2, type='line', color='green', linestyle='--', linewidths=1),
+        mpf.make_addplot([70] * len(df), panel=2, type='line', color='red', linestyle='--', linewidths=1)
     ], returnfig=True)
     
     # Annotate Hammer patterns

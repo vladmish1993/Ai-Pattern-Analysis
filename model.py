@@ -1,4 +1,6 @@
 import os
+from pprint import pprint
+
 import schedule
 import time
 import requests
@@ -25,6 +27,7 @@ def analyze_chart_with_llm(image_path):
         }
     }
     response = requests.post(MODEL_URL, headers=headers, files=files, json=data)
+    pprint(response)
     if response.status_code == 200:
         result = response.json()
         analysis = result.get('generated_text', '')
@@ -47,7 +50,7 @@ def capture_and_analyze_chart():
             f.write(analysis)
 
 # Schedule the function to run every 10 minutes
-schedule.every(10).minutes.do(capture_and_analyze_chart)
+schedule.every(1).minutes.do(capture_and_analyze_chart)
 
 # Run the scheduler
 if __name__ == "__main__":
